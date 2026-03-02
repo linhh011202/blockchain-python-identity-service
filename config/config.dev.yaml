@@ -3,7 +3,7 @@ app:
   env: "dev"
 
 database:
-  url: "postgresql://neondb_owner:npg_CaDH1pO5tmBP@ep-wild-night-a1m31hrz-pooler.ap-southeast-1.aws.neon.tech/blockchain-python?sslmode=require&channel_binding=require"
+  url: "postgresql+psycopg://postgres:postgres@localhost:5433/blockchain_db"
 
 security:
   jwt:
