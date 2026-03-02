@@ -1,0 +1,16 @@
+app:
+  name: "identity-service"
+  env: "dev"
+
+database:
+  url: "postgresql+psycopg://USER:PASSWORD@HOST/DB?sslmode=require"
+
+security:
+  jwt:
+    algorithm: "HS256"
+    access_token_ttl_minutes: 15
+    refresh_token_ttl_days: 14
+    secret: "CHANGE_ME_DEV_SECRET"
+
+rbac:
+  default_role: "user"
