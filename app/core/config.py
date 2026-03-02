@@ -1,77 +1,107 @@
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
+
 import yaml
-from pydantic import BaseModel, Field
 
 
-class JwtConfig(BaseModel):
-    algorithm: str = "HS256"
-    access_token_ttl_minutes: int = 15
-    refresh_token_ttl_days: int = 14
-    secret: str = Field(min_length=1)
+def _load_yaml_config() -> dict:
+    """Load configuration from config.yaml file.
+
+    The path is resolved in order:
+      1. CONFIG_PATH environment variable (used by Cloud Run secret mount)
+      2. config.yaml at the project root (local development)
+    """
+    config_path = Path(
+        os.environ.get("CONFIG_PATH")
+        or Path(__file__).resolve().parents[2] / "config.yaml"
+    )
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 
-class SecurityConfig(BaseModel):
-    jwt: JwtConfig
+_raw = _load_yaml_config()
 
 
-class DatabaseConfig(BaseModel):
-    url: str = Field(min_length=1)
+@dataclass(frozen=True)
+class Configs:
+    # Project name
+    PROJECT_NAME: str = _raw.get("project_name", "")
+
+    # API
+    API: str = _raw.get("api", {}).get("prefix", "/api")
+    API_V1_STR: str = _raw.get("api", {}).get("v1_prefix", "/api/v1")
+
+    # Database config
+    POSTGRES_USER: str = os.environ.get("POSTGRES_USER") or _raw.get(
+        "database", {}
+    ).get("user", "")
+    POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD") or _raw.get(
+        "database", {}
+    ).get("password", "")
+    POSTGRES_DB: str = os.environ.get("POSTGRES_DB") or _raw.get("database", {}).get(
+        "db", ""
+    )
+    POSTGRES_HOST: str = os.environ.get("POSTGRES_HOST") or _raw.get(
+        "database", {}
+    ).get("host", "")
+    POSTGRES_PORT: int = int(
+        os.environ.get("POSTGRES_PORT") or _raw.get("database", {}).get("port", 5432)
+    )
+
+    # JWT config
+    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY") or _raw.get("jwt", {}).get(
+        "secret_key", "change-me-in-production-use-a-long-random-secret"
+    )
+    JWT_ALGORITHM: str = _raw.get("jwt", {}).get("algorithm", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
+        os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
+        or _raw.get("jwt", {}).get("access_token_expire_minutes", 60)
+    )
+
+    # GCS / Firebase Storage config
+    GCS_BUCKET_NAME: str = os.environ.get("GCS_BUCKET_NAME") or _raw.get("gcs", {}).get(
+        "bucket_name", ""
+    )
+    GCS_UPLOAD_PREFIX: str = os.environ.get("GCS_UPLOAD_PREFIX") or _raw.get(
+        "gcs", {}
+    ).get("upload_prefix", "uploads")
+    FIREBASE_CREDENTIALS_PATH: str = os.environ.get(
+        "FIREBASE_CREDENTIALS_PATH"
+    ) or _raw.get("firebase", {}).get("credentials_path", "firebase_credentials.json")
+    FIREBASE_UPLOAD_MAX_CONCURRENCY: int = int(
+        os.environ.get("FIREBASE_UPLOAD_MAX_CONCURRENCY")
+        or _raw.get("firebase", {}).get("upload_max_concurrency", 6)
+    )
+    FIREBASE_RTDB_URL: str = os.environ.get("FIREBASE_RTDB_URL") or _raw.get(
+        "firebase", {}
+    ).get("rtdb_url", "")
+
+    # Google Cloud Pub/Sub config
+    GCP_PROJECT_ID: str = os.environ.get("GCP_PROJECT_ID") or _raw.get("gcp", {}).get(
+        "project_id", ""
+    )
+    PUBSUB_SIGNUP_TOPIC: str = os.environ.get("PUBSUB_SIGNUP_TOPIC") or _raw.get(
+        "pubsub", {}
+    ).get("signup_topic", "banking-ekyc-sign-up")
+    PUBSUB_SIGNIN_TOPIC: str = os.environ.get("PUBSUB_SIGNIN_TOPIC") or _raw.get(
+        "pubsub", {}
+    ).get("signin_topic", "banking-ekyc-sign-in")
+
+    # Other config
+    TZ: str = _raw.get("timezone", "Asia/Singapore")
+
+    # BACKEND_CORS_ORIGINS
+    BACKEND_CORS_ORIGINS: List[str] = field(
+        default_factory=lambda: _raw.get("cors", {}).get("origins", ["*"])
+    )
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}?sslmode=require"
 
 
-class RBACConfig(BaseModel):
-    default_role: str = "user"
-
-
-class AppConfig(BaseModel):
-    name: str = "identity-service"
-    env: str = "dev"
-
-
-class Settings(BaseModel):
-    app: AppConfig
-    database: DatabaseConfig
-    security: SecurityConfig
-    rbac: RBACConfig
-
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        data = dict(obj or {})
-        database = dict(data.get("database") or {})
-        url = database.get("url")
-        if isinstance(url, str) and url.startswith("postgresql://"):
-            database["url"] = url.replace("postgresql://", "postgresql+psycopg://", 1)
-            data["database"] = database
-        return super().model_validate(data, *args, **kwargs)
-
-
-def _load_yaml(path: str) -> dict:
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Config file not found: {p.resolve()}")
-    with p.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _deep_merge(a: dict, b: dict) -> dict:
-    out = dict(a)
-    for k, v in (b or {}).items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
-            out[k] = _deep_merge(out[k], v)
-        else:
-            out[k] = v
-    return out
-
-
-def get_settings() -> Settings:
-    config_path = os.getenv("APP_CONFIG", "config/config.dev.yaml")
-    cfg = _load_yaml(config_path)
-
-    secrets_path = os.getenv("APP_SECRETS", "")
-    if secrets_path:
-        cfg = _deep_merge(cfg, _load_yaml(secrets_path))
-
-    return Settings.model_validate(cfg)
-
-
-settings = get_settings()
+configs = Configs()

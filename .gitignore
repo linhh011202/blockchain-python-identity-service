@@ -9,4 +9,4 @@ wheels/
 # Virtual environments
 .venv
 #configuaration: 
-config/secrets.dev.yaml
+config/secrets*.yaml

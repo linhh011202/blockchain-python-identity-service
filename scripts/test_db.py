@@ -8,16 +8,24 @@ from sqlalchemy import create_engine, text
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-os.environ.setdefault("APP_CONFIG", "config/config.dev.yaml")
-os.environ.setdefault("APP_SECRETS", "config/secrets.dev.yaml")
 os.chdir(project_root)
 
 try:
-    from app.core.config import settings
+    from app.core.config import Configs
 
-    print(f"Testing DB: {settings.database.url[:60]}...")
-    engine = create_engine(settings.database.url, pool_pre_ping=True)
+    config = Configs()
+
+    db_url = (
+        f"postgresql+psycopg://{config.POSTGRES_USER}:***"
+        f"@{config.POSTGRES_HOST}:{config.POSTGRES_PORT}/{config.POSTGRES_DB}"
+    )
+    print(f"Testing DB: {db_url}...")
+
+    engine = create_engine(
+        f"postgresql+psycopg://{config.POSTGRES_USER}:{config.POSTGRES_PASSWORD}"
+        f"@{config.POSTGRES_HOST}:{config.POSTGRES_PORT}/{config.POSTGRES_DB}?sslmode=require",
+        pool_pre_ping=True,
+    )
 
     with engine.connect() as conn:
         result = conn.execute(text("SELECT 1")).scalar_one()
