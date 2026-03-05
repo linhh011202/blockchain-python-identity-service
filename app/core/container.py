@@ -1,0 +1,1 @@
+# dinh nghĩa database, table nào, mà mình xài 

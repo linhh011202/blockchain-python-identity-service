@@ -1,47 +1,15 @@
-project_name: "blockchain-python"
+PROJECT_NAME: "Blockchain-Python"
 
-api:
-  prefix: "/api"
-  v1_prefix: "/api/v1"
+POSTGRES_USER: "neondb_owner"
+POSTGRES_PASSWORD: "npg_CaDH1pO5tmBP"
+POSTGRES_DB: "blockchain-python"
 
-# database:
-#   user: "neondb_owner"
-#   password: "npg_CaDH1pO5tmBP"
-#   db: "neondb"
-#   host: "ep-wild-night-a1m31hrz-pooler.ap-southeast-1.aws.neon.tech"
-#   port: 5432
+# Khi chạy local: dùng localhost
+# Khi chạy docker-compose: thường là tên service (vd: db)
+POSTGRES_HOST: "ep-wild-night-a1m31hrz-pooler.ap-southeast-1.aws.neon.tech"
+POSTGRES_PORT: 5432
 
-database:
-  user: "postgres"
-  password: "postgres"
-  db: "blockchain_db"
-  host: "db"  # Docker service name
-  port: 5432
+TZ: "Asia/Singapore"
 
-jwt:
-  secret_key: "your-super-secret-key-change-in-production"
-  algorithm: "HS256"
-  access_token_expire_minutes: 60
-
-gcs:
-  bucket_name: ""
-  upload_prefix: "uploads"
-
-firebase:
-  credentials_path: "firebase_credentials.json"
-  upload_max_concurrency: 6
-  rtdb_url: ""
-
-gcp:
-  project_id: ""
-
-pubsub:
-  signup_topic: "banking-ekyc-sign-up"
-  signin_topic: "banking-ekyc-sign-in"
-
-timezone: "Asia/Singapore"
-
-cors:
-  origins:
-    - "http://localhost:3000"
-    - "http://localhost:8000"
+BACKEND_CORS_ORIGINS:
+  - "*"
