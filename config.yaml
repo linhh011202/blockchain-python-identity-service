@@ -5,7 +5,7 @@ POSTGRES_PASSWORD: "npg_CaDH1pO5tmBP"
 POSTGRES_DB: "blockchain-python"
 
 # Khi chạy local: dùng localhost
-# Khi chạy docker-compose: thường là tên service (vd: db)
+# Khi chạy docker-compose: thường là tên  (vd: db)
 POSTGRES_HOST: "ep-wild-night-a1m31hrz-pooler.ap-southeast-1.aws.neon.tech"
 POSTGRES_PORT: 5432
 
